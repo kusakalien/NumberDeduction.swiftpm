@@ -7,6 +7,7 @@ struct SinglePlayerGameView: View {
     @State private var selectedColor: CardColor = .black
     @State private var cpuThinking = false
     @State private var showReturnAlert = false
+    @State private var isReady = false
 
     let onExit: () -> Void
 
@@ -18,6 +19,26 @@ struct SinglePlayerGameView: View {
     }
 
     var body: some View {
+        Group {
+            if isReady {
+                gameContent
+            } else {
+                ProgressView("準備中...")
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .onAppear {
+            startGame()
+        }
+        .alert("ゲームを終了しますか？", isPresented: $showReturnAlert) {
+            Button("終了", role: .destructive) { onExit() }
+            Button("続ける", role: .cancel) { }
+        }
+    }
+
+    // MARK: - Main Game Content
+
+    private var gameContent: some View {
         VStack(spacing: 0) {
             // Top bar
             HStack {
@@ -113,14 +134,6 @@ struct SinglePlayerGameView: View {
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 4)
             }
-        }
-        .background(Color(.systemGroupedBackground))
-        .onAppear {
-            startGame()
-        }
-        .alert("ゲームを終了しますか？", isPresented: $showReturnAlert) {
-            Button("終了", role: .destructive) { onExit() }
-            Button("続ける", role: .cancel) { }
         }
     }
 
@@ -220,6 +233,7 @@ struct SinglePlayerGameView: View {
         game.startNewGame(player1Name: "あなた", player2Name: "CPU")
         cpu.reset()
         updateCPUKnowledge()
+        isReady = true
 
         if !isMyTurn {
             scheduleCPUTurn()
@@ -230,11 +244,9 @@ struct SinglePlayerGameView: View {
 
     private func updateCPUKnowledge() {
         cpu.markKnownCards(from: game.players)
-        // CPU knows its own cards
         for card in game.players[cpuIndex].cards {
             cpu.markKnown(card: card)
         }
-        // CPU knows drawn card if it's CPU's turn
         if let drawn = game.drawnCard, game.currentPlayerIndex == cpuIndex {
             cpu.markKnown(card: drawn)
         }
@@ -253,7 +265,6 @@ struct SinglePlayerGameView: View {
     }
 
     private func checkCPUTurnAfterDelay() {
-        // After player action, check if it's now CPU's turn
         if game.currentPlayerIndex == cpuIndex {
             scheduleCPUTurn()
         }
@@ -273,7 +284,6 @@ struct SinglePlayerGameView: View {
         case .attackResult(.miss):
             game.acknowledgesMiss()
             updateCPUKnowledge()
-            // Turn switches to player, nothing more to do
 
         case .choosingContinueOrStay:
             let shouldContinue = cpu.shouldContinueAttack(opponentCards: game.players[localIndex].cards)
@@ -283,7 +293,6 @@ struct SinglePlayerGameView: View {
             } else {
                 game.stay()
                 updateCPUKnowledge()
-                // Turn switches to player
             }
 
         default:
@@ -326,7 +335,6 @@ struct SinglePlayerGameView: View {
                 game.attack(guessedNumber: guess.number, guessedColor: guess.color)
                 updateCPUKnowledge()
 
-                // Handle result after a delay
                 Task {
                     try? await Task.sleep(for: .milliseconds(1000))
                     await MainActor.run {
@@ -369,7 +377,6 @@ struct SinglePlayerGameView: View {
 
     private func targetHighlightIndex() -> Int? {
         if case .guessing(let idx) = game.phase, game.currentPlayerIndex == cpuIndex {
-            // Show which card CPU is targeting
             return idx
         }
         if case .guessing(let idx) = game.phase, isMyTurn {
