@@ -28,8 +28,8 @@ struct GameMessage: Codable, Sendable {
 
 // MARK: - Multiplayer Service
 
-@Observable
-final class MultiplayerService: NSObject, @unchecked Sendable {
+@MainActor @Observable
+final class MultiplayerService: NSObject {
     var isAuthenticated = false
     var isMatchmaking = false
     var isMatched = false
@@ -40,27 +40,27 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
     var localPlayerRating: Int = 1500
 
     private var match: GKMatch?
-    private var matchmakerVC: GKMatchmakerViewController?
     var gameState: GameState?
 
     // MARK: - Authentication
 
     func authenticate() {
         GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
+            let errMsg = error?.localizedDescription
+            let isAuth = GKLocalPlayer.local.isAuthenticated
+            let displayName = GKLocalPlayer.local.displayName
             Task { @MainActor in
                 guard let self else { return }
-                if let error {
-                    self.errorMessage = "認証エラー: \(error.localizedDescription)"
+                if let errMsg {
+                    self.errorMessage = "認証エラー: \(errMsg)"
                     return
                 }
                 if viewController != nil {
-                    // Present the authentication view controller
-                    // In SwiftUI, we handle this differently
                     return
                 }
-                if GKLocalPlayer.local.isAuthenticated {
+                if isAuth {
                     self.isAuthenticated = true
-                    self.localPlayerName = GKLocalPlayer.local.displayName
+                    self.localPlayerName = displayName
                     self.loadRating()
                 }
             }
@@ -68,7 +68,6 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
     }
 
     private func loadRating() {
-        // Load from UserDefaults as a simple persistence for rating
         localPlayerRating = UserDefaults.standard.integer(forKey: "playerRating")
         if localPlayerRating == 0 {
             localPlayerRating = 1500
@@ -97,12 +96,16 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
         errorMessage = nil
 
         GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
+            let errMsg = error?.localizedDescription
+            let playerName = match?.players.first?.displayName
+            let playerIDs = match?.players.map(\.teamPlayerID)
+            let localID = GKLocalPlayer.local.teamPlayerID
             Task { @MainActor in
                 guard let self else { return }
                 self.isMatchmaking = false
 
-                if let error {
-                    self.errorMessage = "マッチメイキングエラー: \(error.localizedDescription)"
+                if let errMsg {
+                    self.errorMessage = "マッチメイキングエラー: \(errMsg)"
                     return
                 }
 
@@ -114,6 +117,13 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
                 self.match = match
                 match.delegate = self
                 self.isMatched = true
+
+                // Determine player index
+                if let remoteID = playerIDs?.first {
+                    self.localPlayerIndex = localID < remoteID ? 0 : 1
+                    self.remotePlayerName = playerName ?? "相手"
+                }
+
                 self.setupGame()
             }
         }
@@ -134,18 +144,8 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
     // MARK: - Game Setup
 
     private func setupGame() {
-        guard let match else { return }
+        guard match != nil else { return }
 
-        let localID = GKLocalPlayer.local.teamPlayerID
-        let remoteIDs = match.players.map(\.teamPlayerID)
-
-        // Determine player index by comparing IDs lexicographically
-        if let remoteID = remoteIDs.first {
-            localPlayerIndex = localID < remoteID ? 0 : 1
-            remotePlayerName = match.players.first?.displayName ?? "相手"
-        }
-
-        // Player 0 generates the seed and sends setup
         if localPlayerIndex == 0 {
             let seed = Int.random(in: 0...Int.max)
             let firstPlayer = Int.random(in: 0...1)
@@ -165,7 +165,6 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
     }
 
     private func applySeededSetup(state: GameState, seed: Int, firstPlayer: Int) {
-        // Build deck with deterministic shuffle using seed
         var generator = SeededRandomNumberGenerator(seed: UInt64(seed))
         var cards: [Card] = []
         for number in 0...11 {
@@ -187,7 +186,6 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
         state.roundScores = [0, 0]
         state.isGameOver = false
 
-        // Each player draws 4 cards
         for _ in 0..<4 {
             if !state.deck.isEmpty {
                 let card = state.deck.removeFirst()
@@ -301,21 +299,19 @@ final class MultiplayerService: NSObject, @unchecked Sendable {
 
 // MARK: - GKMatchDelegate
 
-extension MultiplayerService: GKMatchDelegate {
-    func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
-        do {
-            let message = try JSONDecoder().decode(GameMessage.self, from: data)
-            Task { @MainActor in
-                self.handleRemoteMessage(message)
-            }
-        } catch {
-            Task { @MainActor in
-                self.errorMessage = "受信エラー: \(error.localizedDescription)"
+extension MultiplayerService: @preconcurrency GKMatchDelegate {
+    nonisolated func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
+        let decoded = try? JSONDecoder().decode(GameMessage.self, from: data)
+        Task { @MainActor in
+            if let decoded {
+                self.handleRemoteMessage(decoded)
+            } else {
+                self.errorMessage = "受信エラー: メッセージのデコードに失敗しました"
             }
         }
     }
 
-    func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
+    nonisolated func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
         Task { @MainActor in
             switch state {
             case .disconnected:
@@ -327,9 +323,10 @@ extension MultiplayerService: GKMatchDelegate {
         }
     }
 
-    func match(_ match: GKMatch, didFailWithError error: Error?) {
+    nonisolated func match(_ match: GKMatch, didFailWithError error: (any Error)?) {
+        let errMsg = error?.localizedDescription ?? "不明"
         Task { @MainActor in
-            self.errorMessage = "接続エラー: \(error?.localizedDescription ?? "不明")"
+            self.errorMessage = "接続エラー: \(errMsg)"
             self.isMatched = false
         }
     }
@@ -345,7 +342,6 @@ struct SeededRandomNumberGenerator: RandomNumberGenerator {
     }
 
     mutating func next() -> UInt64 {
-        // xorshift64
         state ^= state << 13
         state ^= state >> 7
         state ^= state << 17
