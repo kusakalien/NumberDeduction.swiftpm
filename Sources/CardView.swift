@@ -17,8 +17,8 @@ struct CardView: View {
 
     var body: some View {
         ZStack {
-            if isFaceUp || card.isOpen {
-                // Face up
+            if isFaceUp {
+                // Face up — show number and color
                 RoundedRectangle(cornerRadius: 10)
                     .fill(card.color == .black ? Color.black : Color.white)
                     .overlay(
@@ -30,7 +30,7 @@ struct CardView: View {
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(card.color == .black ? .white : .black)
             } else {
-                // Face down
+                // Face down — hide all card info
                 RoundedRectangle(cornerRadius: 10)
                     .fill(
                         LinearGradient(
