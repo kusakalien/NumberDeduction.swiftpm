@@ -121,14 +121,13 @@ final class GameState: @unchecked Sendable {
         players[1].cards = []
 
         // Each player draws 4 cards
-        for i in 0..<4 {
+        for _ in 0..<4 {
             if let card = drawFromDeck() {
                 players[0].insertSorted(card)
             }
             if let card = drawFromDeck() {
                 players[1].insertSorted(card)
             }
-            _ = i
         }
 
         currentPlayerIndex = firstPlayerOfRound

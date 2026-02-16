@@ -1,27 +1,45 @@
 import SwiftUI
 
+enum AppScreen {
+    case home
+    case singlePlayer
+    case multiplayer
+}
+
 @main
 struct NumberDeductionApp: App {
     @State private var multiplayerService = MultiplayerService()
+    @State private var currentScreen: AppScreen = .home
 
     var body: some Scene {
         WindowGroup {
-            ContentView(multiplayerService: multiplayerService)
-                .onAppear {
-                    multiplayerService.authenticate()
+            switch currentScreen {
+            case .home:
+                HomeView(
+                    multiplayerService: multiplayerService,
+                    onStartSinglePlayer: {
+                        currentScreen = .singlePlayer
+                    }
+                )
+                .onChange(of: multiplayerService.isMatched) {
+                    if multiplayerService.isMatched {
+                        currentScreen = .multiplayer
+                    }
                 }
-        }
-    }
-}
 
-struct ContentView: View {
-    let multiplayerService: MultiplayerService
+            case .singlePlayer:
+                SinglePlayerGameView {
+                    currentScreen = .home
+                }
 
-    var body: some View {
-        if multiplayerService.isMatched {
-            GameView(multiplayerService: multiplayerService)
-        } else {
-            HomeView(multiplayerService: multiplayerService)
+            case .multiplayer:
+                GameView(multiplayerService: multiplayerService)
+                    .onChange(of: multiplayerService.isMatched) {
+                        if !multiplayerService.isMatched {
+                            currentScreen = .home
+                        }
+                    }
+            }
         }
     }
 }

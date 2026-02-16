@@ -3,6 +3,7 @@ import GameKit
 
 struct HomeView: View {
     let multiplayerService: MultiplayerService
+    var onStartSinglePlayer: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -49,6 +50,19 @@ struct HomeView: View {
 
                 // Buttons
                 VStack(spacing: 16) {
+                    // Single player
+                    Button {
+                        onStartSinglePlayer()
+                    } label: {
+                        Label("1人プレイ（CPU対戦）", systemImage: "cpu")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+
+                    // Online
                     if multiplayerService.isAuthenticated {
                         Button {
                             multiplayerService.findMatch()
