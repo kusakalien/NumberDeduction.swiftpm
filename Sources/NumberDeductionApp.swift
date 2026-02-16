@@ -1,44 +1,57 @@
 import SwiftUI
 
-enum AppScreen {
+enum AppScreen: Equatable {
     case home
     case singlePlayer
     case multiplayer
 }
 
+@Observable
+final class AppRouter {
+    var currentScreen: AppScreen = .home
+}
+
 @main
 struct NumberDeductionApp: App {
+    @State private var router = AppRouter()
     @State private var multiplayerService = MultiplayerService()
-    @State private var currentScreen: AppScreen = .home
 
     var body: some Scene {
         WindowGroup {
-            switch currentScreen {
+            ContentView(router: router, multiplayerService: multiplayerService)
+        }
+    }
+}
+
+struct ContentView: View {
+    @Bindable var router: AppRouter
+    let multiplayerService: MultiplayerService
+
+    var body: some View {
+        ZStack {
+            switch router.currentScreen {
             case .home:
                 HomeView(
                     multiplayerService: multiplayerService,
                     onStartSinglePlayer: {
-                        currentScreen = .singlePlayer
+                        router.currentScreen = .singlePlayer
                     }
                 )
-                .onChange(of: multiplayerService.isMatched) {
-                    if multiplayerService.isMatched {
-                        currentScreen = .multiplayer
-                    }
-                }
 
             case .singlePlayer:
                 SinglePlayerGameView {
-                    currentScreen = .home
+                    router.currentScreen = .home
                 }
 
             case .multiplayer:
                 GameView(multiplayerService: multiplayerService)
-                    .onChange(of: multiplayerService.isMatched) {
-                        if !multiplayerService.isMatched {
-                            currentScreen = .home
-                        }
-                    }
+            }
+        }
+        .onChange(of: multiplayerService.isMatched) {
+            if multiplayerService.isMatched {
+                router.currentScreen = .multiplayer
+            } else if router.currentScreen == .multiplayer {
+                router.currentScreen = .home
             }
         }
     }

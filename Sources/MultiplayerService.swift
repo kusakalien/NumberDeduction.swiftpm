@@ -42,6 +42,10 @@ final class MultiplayerService: NSObject {
     private var match: GKMatch?
     var gameState: GameState?
 
+    nonisolated override init() {
+        super.init()
+    }
+
     // MARK: - Authentication
 
     func authenticate() {
