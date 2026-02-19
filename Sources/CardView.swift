@@ -6,12 +6,14 @@ struct CardView: View {
     let card: Card
     let isFaceUp: Bool
     let isHighlighted: Bool
+    let isRevealed: Bool  // true when this card has been opened by opponent's attack
     let onTap: (() -> Void)?
 
-    init(card: Card, isFaceUp: Bool, isHighlighted: Bool = false, onTap: (() -> Void)? = nil) {
+    init(card: Card, isFaceUp: Bool, isHighlighted: Bool = false, isRevealed: Bool = false, onTap: (() -> Void)? = nil) {
         self.card = card
         self.isFaceUp = isFaceUp
         self.isHighlighted = isHighlighted
+        self.isRevealed = isRevealed
         self.onTap = onTap
     }
 
@@ -23,6 +25,18 @@ struct CardView: View {
         card.color == .black ? .white : .black
     }
 
+    private var borderColor: Color {
+        if isHighlighted { return .yellow }
+        if isRevealed { return .red }
+        return .gray
+    }
+
+    private var borderWidth: CGFloat {
+        if isHighlighted { return 3 }
+        if isRevealed { return 2.5 }
+        return 1
+    }
+
     var body: some View {
         ZStack {
             // Background always shows the card color (black or white)
@@ -30,22 +44,29 @@ struct CardView: View {
                 .fill(cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(isHighlighted ? Color.yellow : Color.gray, lineWidth: isHighlighted ? 3 : 1)
+                        .stroke(borderColor, lineWidth: borderWidth)
                 )
 
             if isFaceUp {
                 // Face up — show number
                 Text("\(card.number)")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(cardForeground)
+                    .foregroundStyle(isRevealed ? cardForeground.opacity(0.4) : cardForeground)
             } else {
                 // Face down — show "?" to indicate hidden number
                 Text("?")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(cardForeground.opacity(0.4))
             }
+
+            // Red overlay for revealed cards
+            if isRevealed {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.red.opacity(0.15))
+            }
         }
         .frame(width: 52, height: 76)
+        .opacity(isRevealed ? 0.7 : 1.0)
         .shadow(color: isHighlighted ? .yellow.opacity(0.5) : .black.opacity(0.2), radius: isHighlighted ? 6 : 3)
         .onTapGesture {
             onTap?()
@@ -96,6 +117,7 @@ struct PlayerHandView: View {
                             card: card,
                             isFaceUp: isLocalPlayer || card.isOpen,
                             isHighlighted: highlightedIndex == index,
+                            isRevealed: isLocalPlayer && card.isOpen,
                             onTap: {
                                 onCardTap?(index)
                             }
