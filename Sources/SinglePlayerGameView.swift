@@ -126,6 +126,7 @@ struct SinglePlayerGameView: View {
             PlayerHandView(
                 player: game.players[localIndex],
                 isLocalPlayer: true,
+                highlightedIndex: targetHighlightIndex(for: localIndex),
                 newlyInsertedCardId: insertedCardIdForLocal()
             )
 
@@ -322,28 +323,28 @@ struct SinglePlayerGameView: View {
         let opponentCards = game.players[localIndex].cards
         guard let targetIndex = cpu.chooseTarget(opponentCards: opponentCards) else { return }
 
+        // Step 1: Select target — highlight the card
         game.selectTarget(index: targetIndex)
+        game.message = "CPUがあなたのカードを選択..."
 
         let guess = cpu.guessNumber(targetIndex: targetIndex, opponentCards: opponentCards)
 
-        // Step 1: Show which number CPU guessed
-        cpuThinking = true
         Task {
-            try? await Task.sleep(for: .milliseconds(800))
+            // Step 2: Wait for player to see which card is targeted
+            try? await Task.sleep(for: .milliseconds(1200))
             await MainActor.run {
-                cpuThinking = false
                 game.message = "CPUは「\(guess)」と推理！"
             }
 
-            // Step 2: Wait for player to see the guess
+            // Step 3: Wait for player to see the guess
             try? await Task.sleep(for: .milliseconds(1500))
             await MainActor.run {
-                // Step 3: Execute the attack
+                // Step 4: Execute the attack
                 game.attack(guessedNumber: guess)
                 updateCPUKnowledge()
             }
 
-            // Step 4: Wait for player to see the result
+            // Step 5: Wait for player to see the result
             try? await Task.sleep(for: .milliseconds(1800))
             await MainActor.run {
                 handleCPUPostAttack()

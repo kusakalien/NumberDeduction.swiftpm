@@ -209,6 +209,7 @@ struct GameView: View {
             PlayerHandView(
                 player: game.players[localIndex],
                 isLocalPlayer: true,
+                highlightedIndex: targetHighlightIndex(for: localIndex, game: game),
                 newlyInsertedCardId: insertedCardId(for: localIndex, game: game)
             )
 
@@ -225,7 +226,7 @@ struct GameView: View {
     // MARK: - Helpers
 
     private func targetHighlightIndex(for playerIdx: Int, game: GameState) -> Int? {
-        if case .guessing(let idx) = game.phase, playerIdx != localIndex {
+        if case .guessing(let idx) = game.phase, playerIdx == game.opponentIndex {
             return idx
         }
         return nil
