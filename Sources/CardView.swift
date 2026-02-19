@@ -15,38 +15,34 @@ struct CardView: View {
         self.onTap = onTap
     }
 
+    private var cardBackground: Color {
+        card.color == .black ? .black : .white
+    }
+
+    private var cardForeground: Color {
+        card.color == .black ? .white : .black
+    }
+
     var body: some View {
         ZStack {
-            if isFaceUp {
-                // Face up — show number and color
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(card.color == .black ? Color.black : Color.white)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(isHighlighted ? Color.yellow : Color.gray, lineWidth: isHighlighted ? 3 : 1)
-                    )
+            // Background always shows the card color (black or white)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(isHighlighted ? Color.yellow : Color.gray, lineWidth: isHighlighted ? 3 : 1)
+                )
 
+            if isFaceUp {
+                // Face up — show number
                 Text("\(card.number)")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(card.color == .black ? .white : .black)
+                    .foregroundStyle(cardForeground)
             } else {
-                // Face down — hide all card info
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(
-                        LinearGradient(
-                            colors: [.blue, .indigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(isHighlighted ? Color.yellow : Color.blue.opacity(0.5), lineWidth: isHighlighted ? 3 : 1)
-                    )
-
-                Image(systemName: "questionmark")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.6))
+                // Face down — show "?" to indicate hidden number
+                Text("?")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(cardForeground.opacity(0.4))
             }
         }
         .frame(width: 52, height: 76)
@@ -77,14 +73,12 @@ struct DrawnCardView: View {
 struct PlayerHandView: View {
     let player: Player
     let isLocalPlayer: Bool
-    let showFaceDown: Bool
     let highlightedIndex: Int?
     let onCardTap: ((Int) -> Void)?
 
-    init(player: Player, isLocalPlayer: Bool, showFaceDown: Bool = false, highlightedIndex: Int? = nil, onCardTap: ((Int) -> Void)? = nil) {
+    init(player: Player, isLocalPlayer: Bool, highlightedIndex: Int? = nil, onCardTap: ((Int) -> Void)? = nil) {
         self.player = player
         self.isLocalPlayer = isLocalPlayer
-        self.showFaceDown = showFaceDown
         self.highlightedIndex = highlightedIndex
         self.onCardTap = onCardTap
     }
@@ -115,23 +109,16 @@ struct PlayerHandView: View {
     }
 }
 
-// MARK: - Number Picker
+// MARK: - Number Picker (number only, color is always visible)
 
-struct NumberColorPicker: View {
+struct NumberPicker: View {
     @Binding var selectedNumber: Int
-    @Binding var selectedColor: CardColor
     let onConfirm: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("数字と色を選んでください")
+            Text("数字を推理してください")
                 .font(.headline)
-
-            // Color picker
-            HStack(spacing: 20) {
-                colorButton(.black, label: "黒")
-                colorButton(.white, label: "白")
-            }
 
             // Number grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
@@ -164,30 +151,6 @@ struct NumberColorPicker: View {
         .padding()
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func colorButton(_ color: CardColor, label: String) -> some View {
-        Button {
-            selectedColor = color
-        } label: {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(color == .black ? Color.black : Color.white)
-                    .frame(width: 24, height: 24)
-                    .overlay(Circle().stroke(Color.gray, lineWidth: 1))
-                Text(label)
-                    .fontWeight(.medium)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(selectedColor == color ? Color.accentColor.opacity(0.2) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(selectedColor == color ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 

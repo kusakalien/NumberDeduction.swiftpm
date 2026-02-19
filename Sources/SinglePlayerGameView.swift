@@ -4,7 +4,6 @@ struct SinglePlayerGameView: View {
     @State private var game = GameState()
     @State private var cpu = CPUPlayer()
     @State private var selectedNumber: Int = 0
-    @State private var selectedColor: CardColor = .black
     @State private var cpuThinking = false
     @State private var showReturnAlert = false
     @State private var isReady = false
@@ -144,11 +143,10 @@ struct SinglePlayerGameView: View {
         switch game.phase {
         case .guessing:
             if isMyTurn {
-                NumberColorPicker(
+                NumberPicker(
                     selectedNumber: $selectedNumber,
-                    selectedColor: $selectedColor,
                     onConfirm: {
-                        game.attack(guessedNumber: selectedNumber, guessedColor: selectedColor)
+                        game.attack(guessedNumber: selectedNumber)
                         updateCPUKnowledge()
                         checkCPUTurnAfterDelay()
                     }
@@ -324,15 +322,15 @@ struct SinglePlayerGameView: View {
 
         game.selectTarget(index: targetIndex)
 
-        let guess = cpu.guessCard(targetIndex: targetIndex, opponentCards: opponentCards)
+        let guess = cpu.guessNumber(targetIndex: targetIndex, opponentCards: opponentCards)
 
         cpuThinking = true
         Task {
             try? await Task.sleep(for: .milliseconds(500))
             await MainActor.run {
                 cpuThinking = false
-                game.message = "CPUは \(guess.color == .black ? "黒" : "白")\(guess.number) と推理しました！"
-                game.attack(guessedNumber: guess.number, guessedColor: guess.color)
+                game.message = "CPUは \(guess) と推理しました！"
+                game.attack(guessedNumber: guess)
                 updateCPUKnowledge()
 
                 Task {

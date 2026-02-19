@@ -166,11 +166,11 @@ final class GameState: @unchecked Sendable {
         message = "数字を推理してください。"
     }
 
-    func attack(guessedNumber: Int, guessedColor: CardColor) {
+    func attack(guessedNumber: Int) {
         guard case .guessing(let targetIndex) = phase else { return }
         let targetCard = players[opponentIndex].cards[targetIndex]
 
-        if targetCard.number == guessedNumber && targetCard.color == guessedColor {
+        if targetCard.number == guessedNumber {
             // Hit
             players[opponentIndex].cards[targetIndex].isOpen = true
             phase = .attackResult(.hit)

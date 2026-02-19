@@ -20,7 +20,6 @@ struct GameMessage: Codable, Sendable {
     let playerIndex: Int
     var targetIndex: Int?
     var guessedNumber: Int?
-    var guessedColor: CardColor?
     var continueAttack: Bool?
     var deckSeed: Int?
     var firstPlayer: Int?
@@ -233,10 +232,10 @@ final class MultiplayerService: NSObject {
         gameState?.selectTarget(index: index)
     }
 
-    func sendAttack(number: Int, color: CardColor) {
-        let msg = GameMessage(type: .attack, playerIndex: localPlayerIndex, guessedNumber: number, guessedColor: color)
+    func sendAttack(number: Int) {
+        let msg = GameMessage(type: .attack, playerIndex: localPlayerIndex, guessedNumber: number)
         sendMessage(msg)
-        gameState?.attack(guessedNumber: number, guessedColor: color)
+        gameState?.attack(guessedNumber: number)
     }
 
     func sendContinueOrStay(continueAttack: Bool) {
@@ -280,8 +279,8 @@ final class MultiplayerService: NSObject {
                 gameState.selectTarget(index: idx)
             }
         case .attack:
-            if let number = message.guessedNumber, let color = message.guessedColor {
-                gameState.attack(guessedNumber: number, guessedColor: color)
+            if let number = message.guessedNumber {
+                gameState.attack(guessedNumber: number)
             }
         case .attackResult:
             gameState.acknowledgesMiss()

@@ -3,8 +3,6 @@ import SwiftUI
 struct GameView: View {
     let multiplayerService: MultiplayerService
     @State private var selectedNumber: Int = 0
-    @State private var selectedColor: CardColor = .black
-    @State private var showMyCards = false
 
     private var game: GameState? { multiplayerService.gameState }
     private var localIndex: Int { multiplayerService.localPlayerIndex }
@@ -118,11 +116,10 @@ struct GameView: View {
         switch game.phase {
         case .guessing:
             if isMyTurn {
-                NumberColorPicker(
+                NumberPicker(
                     selectedNumber: $selectedNumber,
-                    selectedColor: $selectedColor,
                     onConfirm: {
-                        multiplayerService.sendAttack(number: selectedNumber, color: selectedColor)
+                        multiplayerService.sendAttack(number: selectedNumber)
                     }
                 )
                 .padding(.horizontal)
