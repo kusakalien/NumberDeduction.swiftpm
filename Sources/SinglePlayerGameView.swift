@@ -67,7 +67,8 @@ struct SinglePlayerGameView: View {
             PlayerHandView(
                 player: game.players[cpuIndex],
                 isLocalPlayer: false,
-                highlightedIndex: targetHighlightIndex(),
+                highlightedIndex: targetHighlightIndex(for: cpuIndex),
+                newlyInsertedCardId: game.currentPlayerIndex == cpuIndex ? nil : insertedCardIdForCPU(),
                 onCardTap: isMyTurn && game.phase == .choosingTarget ? { index in
                     game.selectTarget(index: index)
                 } : nil
@@ -124,7 +125,8 @@ struct SinglePlayerGameView: View {
             // Local player area
             PlayerHandView(
                 player: game.players[localIndex],
-                isLocalPlayer: true
+                isLocalPlayer: true,
+                newlyInsertedCardId: insertedCardIdForLocal()
             )
 
             if !isMyTurn && !cpuThinking {
@@ -255,7 +257,7 @@ struct SinglePlayerGameView: View {
         cpuThinking = true
 
         Task {
-            try? await Task.sleep(for: .milliseconds(800))
+            try? await Task.sleep(for: .milliseconds(1000))
             await MainActor.run {
                 executeCPUTurn()
             }
@@ -305,7 +307,7 @@ struct SinglePlayerGameView: View {
         cpuThinking = true
 
         Task {
-            try? await Task.sleep(for: .milliseconds(600))
+            try? await Task.sleep(for: .milliseconds(800))
             await MainActor.run {
                 cpuThinking = false
                 performCPUAttack()
@@ -324,21 +326,27 @@ struct SinglePlayerGameView: View {
 
         let guess = cpu.guessNumber(targetIndex: targetIndex, opponentCards: opponentCards)
 
+        // Step 1: Show which number CPU guessed
         cpuThinking = true
         Task {
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(for: .milliseconds(800))
             await MainActor.run {
                 cpuThinking = false
-                game.message = "CPUは \(guess) と推理しました！"
+                game.message = "CPUは「\(guess)」と推理！"
+            }
+
+            // Step 2: Wait for player to see the guess
+            try? await Task.sleep(for: .milliseconds(1500))
+            await MainActor.run {
+                // Step 3: Execute the attack
                 game.attack(guessedNumber: guess)
                 updateCPUKnowledge()
+            }
 
-                Task {
-                    try? await Task.sleep(for: .milliseconds(1000))
-                    await MainActor.run {
-                        handleCPUPostAttack()
-                    }
-                }
+            // Step 4: Wait for player to see the result
+            try? await Task.sleep(for: .milliseconds(1800))
+            await MainActor.run {
+                handleCPUPostAttack()
             }
         }
     }
@@ -351,7 +359,7 @@ struct SinglePlayerGameView: View {
         case .attackResult(.miss):
             cpuThinking = true
             Task {
-                try? await Task.sleep(for: .milliseconds(500))
+                try? await Task.sleep(for: .milliseconds(800))
                 await MainActor.run {
                     executeCPUTurn()
                 }
@@ -360,7 +368,7 @@ struct SinglePlayerGameView: View {
         case .choosingContinueOrStay:
             cpuThinking = true
             Task {
-                try? await Task.sleep(for: .milliseconds(600))
+                try? await Task.sleep(for: .milliseconds(1000))
                 await MainActor.run {
                     executeCPUTurn()
                 }
@@ -373,13 +381,23 @@ struct SinglePlayerGameView: View {
 
     // MARK: - Helpers
 
-    private func targetHighlightIndex() -> Int? {
-        if case .guessing(let idx) = game.phase, game.currentPlayerIndex == cpuIndex {
-            return idx
-        }
-        if case .guessing(let idx) = game.phase, isMyTurn {
+    private func targetHighlightIndex(for playerIdx: Int) -> Int? {
+        if case .guessing(let idx) = game.phase, playerIdx == game.opponentIndex {
             return idx
         }
         return nil
+    }
+
+    /// Show inserted card highlight for local player's hand
+    private func insertedCardIdForLocal() -> UUID? {
+        guard let id = game.lastInsertedCardId else { return nil }
+        // Show only if the inserted card is in the local player's hand
+        return game.players[localIndex].cards.contains(where: { $0.id == id }) ? id : nil
+    }
+
+    /// Show inserted card highlight for CPU's hand (when CPU stayed/missed)
+    private func insertedCardIdForCPU() -> UUID? {
+        guard let id = game.lastInsertedCardId else { return nil }
+        return game.players[cpuIndex].cards.contains(where: { $0.id == id }) ? id : nil
     }
 }

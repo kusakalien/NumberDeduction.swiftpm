@@ -46,6 +46,7 @@ struct GameView: View {
                 player: game.players[opponentIdx],
                 isLocalPlayer: false,
                 highlightedIndex: targetHighlightIndex(for: opponentIdx, game: game),
+                newlyInsertedCardId: insertedCardId(for: opponentIdx, game: game),
                 onCardTap: isMyTurn && game.phase == .choosingTarget ? { index in
                     multiplayerService.sendSelectTarget(index: index)
                 } : nil
@@ -207,7 +208,8 @@ struct GameView: View {
         VStack(spacing: 4) {
             PlayerHandView(
                 player: game.players[localIndex],
-                isLocalPlayer: true
+                isLocalPlayer: true,
+                newlyInsertedCardId: insertedCardId(for: localIndex, game: game)
             )
 
             if !isMyTurn {
@@ -227,5 +229,10 @@ struct GameView: View {
             return idx
         }
         return nil
+    }
+
+    private func insertedCardId(for playerIdx: Int, game: GameState) -> UUID? {
+        guard let id = game.lastInsertedCardId else { return nil }
+        return game.players[playerIdx].cards.contains(where: { $0.id == id }) ? id : nil
     }
 }

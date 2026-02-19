@@ -7,13 +7,15 @@ struct CardView: View {
     let isFaceUp: Bool
     let isHighlighted: Bool
     let isRevealed: Bool  // true when this card has been opened by opponent's attack
+    let isNewlyInserted: Bool  // true when this card was just inserted (stay/miss)
     let onTap: (() -> Void)?
 
-    init(card: Card, isFaceUp: Bool, isHighlighted: Bool = false, isRevealed: Bool = false, onTap: (() -> Void)? = nil) {
+    init(card: Card, isFaceUp: Bool, isHighlighted: Bool = false, isRevealed: Bool = false, isNewlyInserted: Bool = false, onTap: (() -> Void)? = nil) {
         self.card = card
         self.isFaceUp = isFaceUp
         self.isHighlighted = isHighlighted
         self.isRevealed = isRevealed
+        self.isNewlyInserted = isNewlyInserted
         self.onTap = onTap
     }
 
@@ -26,12 +28,14 @@ struct CardView: View {
     }
 
     private var borderColor: Color {
+        if isNewlyInserted { return .orange }
         if isHighlighted { return .yellow }
         if isRevealed { return .red }
         return .gray
     }
 
     private var borderWidth: CGFloat {
+        if isNewlyInserted { return 3 }
         if isHighlighted { return 3 }
         if isRevealed { return 2.5 }
         return 1
@@ -67,7 +71,7 @@ struct CardView: View {
         }
         .frame(width: 52, height: 76)
         .opacity(isRevealed ? 0.7 : 1.0)
-        .shadow(color: isHighlighted ? .yellow.opacity(0.5) : .black.opacity(0.2), radius: isHighlighted ? 6 : 3)
+        .shadow(color: isNewlyInserted ? .orange.opacity(0.6) : (isHighlighted ? .yellow.opacity(0.5) : .black.opacity(0.2)), radius: isNewlyInserted ? 8 : (isHighlighted ? 6 : 3))
         .onTapGesture {
             onTap?()
         }
@@ -95,12 +99,14 @@ struct PlayerHandView: View {
     let player: Player
     let isLocalPlayer: Bool
     let highlightedIndex: Int?
+    let newlyInsertedCardId: UUID?
     let onCardTap: ((Int) -> Void)?
 
-    init(player: Player, isLocalPlayer: Bool, highlightedIndex: Int? = nil, onCardTap: ((Int) -> Void)? = nil) {
+    init(player: Player, isLocalPlayer: Bool, highlightedIndex: Int? = nil, newlyInsertedCardId: UUID? = nil, onCardTap: ((Int) -> Void)? = nil) {
         self.player = player
         self.isLocalPlayer = isLocalPlayer
         self.highlightedIndex = highlightedIndex
+        self.newlyInsertedCardId = newlyInsertedCardId
         self.onCardTap = onCardTap
     }
 
@@ -118,6 +124,7 @@ struct PlayerHandView: View {
                             isFaceUp: isLocalPlayer || card.isOpen,
                             isHighlighted: highlightedIndex == index,
                             isRevealed: isLocalPlayer && card.isOpen,
+                            isNewlyInserted: card.id == newlyInsertedCardId,
                             onTap: {
                                 onCardTap?(index)
                             }

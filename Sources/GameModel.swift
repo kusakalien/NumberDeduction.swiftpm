@@ -86,6 +86,8 @@ final class GameState: @unchecked Sendable {
     var message: String = ""
     var isGameOver: Bool = false
     var gameWinner: Int? = nil
+    var lastInsertedCardId: UUID? = nil
+    var lastGuessedNumber: Int? = nil
 
     var currentPlayer: Player { players[currentPlayerIndex] }
     var opponentIndex: Int { 1 - currentPlayerIndex }
@@ -145,6 +147,8 @@ final class GameState: @unchecked Sendable {
 
     func drawCard() {
         guard phase == .drawingCard else { return }
+        lastInsertedCardId = nil
+        lastGuessedNumber = nil
         if let card = drawFromDeck() {
             drawnCard = card
             phase = .choosingTarget
@@ -168,13 +172,14 @@ final class GameState: @unchecked Sendable {
 
     func attack(guessedNumber: Int) {
         guard case .guessing(let targetIndex) = phase else { return }
+        lastGuessedNumber = guessedNumber
         let targetCard = players[opponentIndex].cards[targetIndex]
 
         if targetCard.number == guessedNumber {
             // Hit
             players[opponentIndex].cards[targetIndex].isOpen = true
             phase = .attackResult(.hit)
-            message = "イエス！ 正解です！"
+            message = "イエス！ 「\(guessedNumber)」正解です！"
 
             if players[opponentIndex].allOpen {
                 handleRoundWin(winnerIndex: currentPlayerIndex)
@@ -186,7 +191,7 @@ final class GameState: @unchecked Sendable {
         } else {
             // Miss
             phase = .attackResult(.miss)
-            message = "ノー！ はずれです。"
+            message = "ノー！ 「\(guessedNumber)」ははずれです。"
         }
     }
 
@@ -201,6 +206,7 @@ final class GameState: @unchecked Sendable {
         if var card = drawnCard {
             card.isOpen = false
             players[currentPlayerIndex].insertSorted(card)
+            lastInsertedCardId = card.id
             drawnCard = nil
         }
         switchTurn()
@@ -211,6 +217,7 @@ final class GameState: @unchecked Sendable {
         if var card = drawnCard {
             card.isOpen = true
             players[currentPlayerIndex].insertSorted(card)
+            lastInsertedCardId = card.id
             drawnCard = nil
         }
         switchTurn()
