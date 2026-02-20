@@ -129,8 +129,13 @@ struct PlayerHandView: View {
                                 onCardTap?(index)
                             }
                         )
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.3).combined(with: .opacity).combined(with: .offset(y: -30)),
+                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
                     }
                 }
+                .animation(.spring(duration: 0.5, bounce: 0.3), value: player.cards.map(\.id))
                 .padding(.horizontal, 8)
             }
         }

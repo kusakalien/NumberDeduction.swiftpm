@@ -205,8 +205,10 @@ final class GameState: @unchecked Sendable {
         guard phase == .choosingContinueOrStay else { return }
         if var card = drawnCard {
             card.isOpen = false
-            players[currentPlayerIndex].insertSorted(card)
-            lastInsertedCardId = card.id
+            withAnimation(.spring(duration: 0.5, bounce: 0.3)) {
+                players[currentPlayerIndex].insertSorted(card)
+                lastInsertedCardId = card.id
+            }
             drawnCard = nil
         }
         switchTurn()
@@ -216,8 +218,10 @@ final class GameState: @unchecked Sendable {
         guard case .attackResult(.miss) = phase else { return }
         if var card = drawnCard {
             card.isOpen = true
-            players[currentPlayerIndex].insertSorted(card)
-            lastInsertedCardId = card.id
+            withAnimation(.spring(duration: 0.5, bounce: 0.3)) {
+                players[currentPlayerIndex].insertSorted(card)
+                lastInsertedCardId = card.id
+            }
             drawnCard = nil
         }
         switchTurn()
